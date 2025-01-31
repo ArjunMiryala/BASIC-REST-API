@@ -1,0 +1,177 @@
+**Understanding the Flask RESTful API with SQLite Database**
+
+### Overview
+This project is a simple RESTful API built using Flask, Flask-RESTful, and Flask-SQLAlchemy. It provides CRUD (Create, Read, Update, Delete) functionality for managing video records in a SQLite database.
+
+---
+### **1. Flask Application Setup**
+Flask is a lightweight web framework, and Flask-RESTful helps in building REST APIs. We start by initializing a Flask app and an API object:
+
+```python
+from flask import Flask, request  
+from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
+from flask_sqlalchemy import SQLAlchemy
+```
+- `Flask`: The core framework for creating web applications.
+- `Flask-RESTful`: Helps in building REST APIs by providing classes like `Api` and `Resource`.
+- `Flask-SQLAlchemy`: A Flask extension for interacting with the database.
+- `request`: Used to extract data from HTTP requests.
+
+Next, we initialize the Flask app and configure the database:
+
+```python
+app = Flask(__name__)
+api = Api(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+db = SQLAlchemy(app)
+```
+- `app.config['SQLALCHEMY_DATABASE_URI']` specifies the database location. SQLite is used here.
+- `db = SQLAlchemy(app)`: This initializes the database object to manage database operations.
+
+---
+### **2. Creating the Video Model**
+We define a table structure using SQLAlchemy’s `db.Model` class.
+
+```python
+class VideoModel(db.Model):
+    id = db.Column(db.Integer, primary_key=True)  # Unique ID
+    name = db.Column(db.String(100), nullable=False)  # Video name (Required)
+    views = db.Column(db.Integer, nullable=False)  # Number of views
+    likes = db.Column(db.Integer, nullable=False)  # Number of likes
+
+    def __repr__(self):
+        return f"Video(name={self.name}, views={self.views}, likes={self.likes})"
+```
+- `id`: Primary key (unique identifier for each video).
+- `name`: Stores video title, must not be empty.
+- `views`: Integer count of video views.
+- `likes`: Integer count of video likes.
+
+After defining the model, we must create the database:
+```python
+db.create_all()
+```
+(This should be run only once to initialize the database.)
+
+---
+### **3. Handling API Requests**
+
+#### **Defining Request Parsers**
+Request parsers validate input data before processing.
+```python
+video_put_args = reqparse.RequestParser()
+video_put_args.add_argument("name", type=str, help="Name of the video is required", required=True)
+video_put_args.add_argument("views", type=int, help="Views on the video are required", required=True)
+video_put_args.add_argument("likes", type=int, help="Likes on the video are required", required=True)
+```
+- Ensures incoming requests have valid data types.
+- `required=True` makes parameters mandatory.
+
+For updates (PATCH requests):
+```python
+video_update_args = reqparse.RequestParser()
+video_update_args.add_argument("name", type=str, help="Name of the video is required")
+video_update_args.add_argument("views", type=int, help="Views on the video are required")
+video_update_args.add_argument("likes", type=int, help="Likes on the video are required")
+```
+
+#### **Setting Up API Response Formatting**
+To ensure consistent responses, we define response fields:
+```python
+Resource_fields = {
+    'id': fields.Integer,
+    'name': fields.String,
+    'views': fields.Integer,
+    'likes': fields.Integer,
+}
+```
+This ensures that API responses are serialized in a structured format.
+
+---
+### **4. Creating the API Endpoints**
+
+#### **Fetching a Video (GET Request)**
+```python
+@marshal_with(Resource_fields)
+def get(self, video_id):
+    result = VideoModel.query.filter_by(id=video_id).first()
+    if not result:
+        abort(404, message="Could not find video with that ID")
+    return result
+```
+- Fetches video data from the database based on `video_id`.
+- Returns a 404 error if the video does not exist.
+
+#### **Creating a New Video (PUT Request)**
+```python
+@marshal_with(Resource_fields)
+def put(self, video_id):
+    args = video_put_args.parse_args()
+    result = VideoModel.query.filter_by(id=video_id).first()
+    if result:
+        abort(409, message="Video ID already taken...")
+    video = VideoModel(id=video_id, name=args['name'], views=args['views'], likes=args['likes'])
+    db.session.add(video)
+    db.session.commit()
+    return video, 201
+```
+- Checks if `video_id` is already in use.
+- If not, creates a new record and saves it to the database.
+- Returns a 201 status code (Created).
+
+#### **Updating a Video (PATCH Request)**
+```python
+@marshal_with(Resource_fields)
+def patch(self, video_id):
+    args = video_update_args.parse_args()
+    result = VideoModel.query.filter_by(id=video_id).first()
+    if not result:
+        abort(404, message="Video doesn't exist, cannot update")
+    if args['name']:
+        result.name = args['name']
+    if args['views']:
+        result.views = args['views']
+    if args['likes']:
+        result.likes = args['likes']
+    db.session.commit()
+    return result
+```
+- Finds the video by `video_id`.
+- Updates only the provided fields.
+- Saves changes to the database.
+
+#### **Adding the Resource to the API**
+```python
+api.add_resource(Video, "/video/<int:video_id>")
+```
+This makes the `Video` resource available at the `/video/<video_id>` endpoint.
+
+#### **Running the Server**
+```python
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+- `debug=True` enables debugging mode (use only in development).
+- Starts the Flask server.
+
+---
+### **5. Testing the API (test.py)**
+We use the `requests` module to interact with our API.
+```python
+import requests
+BASE = "http://127.0.0.1:5000/"
+response = requests.patch(BASE + "video/2", {"views": 99, "likes": 101})
+print(response.json())
+```
+- Sends a PATCH request to update the video with ID `2`.
+- Prints the response JSON.
+
+---
+### **Conclusion**
+This API allows users to:
+1. **Add a video** using a PUT request.
+2. **Retrieve a video** using a GET request.
+3. **Update a video** using a PATCH request.
+
+This project provides a solid foundation for understanding RESTful APIs with Flask and SQLite.
+

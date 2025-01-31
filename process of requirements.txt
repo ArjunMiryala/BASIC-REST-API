@@ -1,0 +1,3 @@
+SO what you have to do is install requirements.txt from his video and it has all the libraries whcih you need to build rest api
+and then go to this folder REST API LEARN(tech with tim) the folder we are using now and type on the file path just cmd then youll open up commandprompt
+after opening command prompt you type:  pip install -r requirements.txt it will autamatically install all the required libraries 

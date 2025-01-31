@@ -1,0 +1,6 @@
+REST API
+representational state transfer application programming interface
+this rest api from tech with tim's video may not have all the features but it is a start to my learning of API specifically REST api
+REST api is way for other programms or applications to manuplate or update information, way to deal with data in structered format
+we are building kinda mock YOUTUBE api, gonna deal with channel,videos, views and stuff. does not have all the features of YOUTUBE
+we will be creating an api for create,delete,update videos and link those videos to the channels
